@@ -219,4 +219,41 @@ describe('@nx/vite/plugin', () => {
       expect(projectJson.targets.test).toBeUndefined();
     });
   });
+
+  describe('Vitest with passWithNoTests', () => {
+    const vitestApp = uniq('vitestApp');
+
+    beforeAll(() => {
+      proj = newProject({
+        packages: ['@nx/vite', '@nx/react'],
+      });
+      runCLI(
+        `generate @nx/react:app ${vitestApp} --bundler=vite --unitTestRunner=vitest --e2eTestRunner=none --projectNameAndRootFormat=as-provided`
+      );
+
+      updateFile(
+        `apps/${vitestApp}/vite.config.ts`,
+        `/// <reference types='vitest' />
+        import { defineConfig } from 'vite';
+        import react from '@vitejs/plugin-react';
+        import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
+
+        export default defineConfig({
+          root: __dirname,
+        
+          plugins: [react(), nxViteTsPaths()],
+        
+          test: {
+            passWithNoTests: true,
+          },
+        });`
+      );
+    });
+
+    it('should not fail when no test files exist', () => {
+      const result = runCLI(`test ${vitestApp} --watch=false`);
+      expect(result).toContain('No test files found');
+      expect(result).toContain('Successfully ran target test');
+    });
+  });
 });
